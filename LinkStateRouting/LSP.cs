@@ -25,6 +25,12 @@ namespace LinkStateRouting
         {
             public int RouterId { get; set; }
             public int TotalCost { get; set; }
+
+            public RouterCost(int id, int cost)
+            {
+                RouterId = id;
+                TotalCost = cost;
+            }
         }
     }
 }
