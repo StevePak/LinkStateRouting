@@ -13,11 +13,11 @@ namespace LinkStateRouting
         public int sequenceId { get; set; }
         public bool started { get; set; }
 
-        public List<Connection> Connections { get; set; }
+        public HashSet<Connection> Connections { get; set; }
 
         public List<RoutingInfo> RoutingTable { get; set; }
 
-        public List<LSP> LSDB { get; set; }
+        public Dictionary<int, LSP> LSDB { get; set; }
 
         public class RoutingInfo
         {
@@ -59,16 +59,16 @@ namespace LinkStateRouting
                 item.TickCount++;
                 if (item.TickCount > 2)
                 {
-                    item.Cost = Int32.MaxValue;
+                    item.Cost = int.MaxValue;
                 }
             }
 
-            List<LSP.RouterCost> list = new List<LSP.RouterCost>();
+            Dictionary<int, int> links = new Dictionary<int, int>();
             foreach (var item in Connections)
             {
-                list.Add(new LSP.RouterCost(item.Router.routerId, item.Cost));
+                links.Add(item.Router.routerId, item.Cost);
             }
-            LSP lsp = new LSP(routerId, ++sequenceId, list);
+            LSP lsp = new LSP(routerId, ++sequenceId, links);
             replaceLSDB(lsp);
             foreach (var item in Connections)
             {
@@ -76,61 +76,46 @@ namespace LinkStateRouting
             }
         }
 
-        public void ReceivePackage(LSP pack)
+        public void ReceivePackage(LSP newLSP)
         {
             if (!started)
             {
                 return;
             }
 
-            pack.TTL--;
-            LSP lsp = LSDB.Where(x => x.SourceId == pack.SourceId).SingleOrDefault();
-            bool newer = replaceLSDB(pack);
-            if (pack.TTL > 0 && newer)
+            newLSP.TTL--;
+            LSP oldLSP;
+            LSDB.TryGetValue(newLSP.SourceId, out oldLSP);
+            if (newLSP.TTL > 0 && newLSP.Newer(oldLSP))
             {
-                foreach (var item in pack.ReachableNetwork)
+                replaceLSDB(newLSP);
+                if (newLSP.ConnectivityChanged(oldLSP))
                 {
-                    if (lsp == null || lsp.ReachableNetwork.Where(x => x.RouterId == item.RouterId).SingleOrDefault().TotalCost != item.TotalCost)
-                    {
-                        ConstructRoutingTable();
-                        continue;
-                    }
+                    ConstructRoutingTable();
                 }
                 foreach (var item in Connections)
                 {
-                    if (item.Router.routerId != pack.SourceId)
-                        item.Router.ReceivePackage(pack);
+                    if (item.Router.routerId != this.routerId)
+                        item.Router.ReceivePackage(newLSP);
                     else
                         item.TickCount++;
                 }
             }
         }
 
-        private bool replaceLSDB(LSP newLSP)
+        private void replaceLSDB(LSP newLSP)
         {
-            LSP oldLSP = LSDB.Where(x => x.SourceId == newLSP.SourceId).SingleOrDefault();
-            if (oldLSP != null)
-            {
-                LSDB.Add(newLSP);
-                return true;
-            }
-            else
-            {
-                if (oldLSP.SequenceId >= newLSP.SequenceId)
-                {
-                    LSDB.Remove(oldLSP);
-                    LSDB.Add(newLSP);
-                    return true;
-                }
-                else
-                    return false;
-            }
-
+            LSDB[newLSP.SourceId] = newLSP;
         }
 
         public void ConstructRoutingTable()
         {
-           
+
+        }
+
+        public void addConnection(Router r, int c)
+        {
+            Connections.Add(new Connection(r, c));
         }
 
     }

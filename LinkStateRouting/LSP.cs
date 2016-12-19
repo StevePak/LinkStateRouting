@@ -11,26 +11,46 @@ namespace LinkStateRouting
         public int SourceId { get; }
         public int SequenceId { get; }
         public int TTL { get; set; }
-        public List<RouterCost> ReachableNetwork { get; set; }
+        public Dictionary<int, int> Links { get; set; }
 
-        public LSP(int source, int sequence, List<RouterCost> reachableNet)
+        public LSP(int source, int sequence, Dictionary<int, int> reachableNet)
         {
             SourceId = source;
             SequenceId = sequence;
             TTL = 10;
-            ReachableNetwork = reachableNet;
+            Links = reachableNet;
         }
 
-        public class RouterCost
+        public bool Newer(LSP old)
         {
-            public int RouterId { get; set; }
-            public int TotalCost { get; set; }
-
-            public RouterCost(int id, int cost)
+            if (old == null || this.SequenceId > old.SequenceId)
             {
-                RouterId = id;
-                TotalCost = cost;
+                return true;
             }
+            return false;
+        }
+
+        public bool ConnectivityChanged(LSP old)
+        {
+            foreach (var item in this.Links)
+            {
+                int val;
+                bool exists = old.Links.TryGetValue(item.Key, out val);
+                if (!exists || val != item.Value)
+                {
+                    return false;
+                }
+            }
+            foreach (var item in old.Links)
+            {
+                int val;
+                bool exists = this.Links.TryGetValue(item.Key, out val);
+                if (!exists || val != item.Value)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }
