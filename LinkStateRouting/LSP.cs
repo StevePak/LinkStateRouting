@@ -32,6 +32,10 @@ namespace LinkStateRouting
 
         public bool ConnectivityChanged(LSP old)
         {
+            if (old == null)
+            {
+                return true;
+            }
             foreach (var item in this.Links)
             {
                 int val;
