@@ -68,10 +68,12 @@ namespace LinkStateRouting
                 return;
             }
 
+            Console.WriteLine($"Router {routerId} has originated a package.");
+
             foreach (var item in Connections)
             {
                 item.TickCount++;
-                if (item.TickCount > 2)
+                if (item.TickCount > 1)
                 {
                     item.Maxed = true;
                 }
@@ -134,8 +136,7 @@ namespace LinkStateRouting
         public void ConstructRoutingTable()
         {
 
-            if (this.routerId == 0)
-                ;
+            
 
             foreach (var item in RoutingTable.Values)
             {
